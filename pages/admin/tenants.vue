@@ -27,6 +27,9 @@
         <template #createdAt-data="{ row }">
           <span class="text-xs text-gray-400">{{ formatDate(row.createdAt) }}</span>
         </template>
+        <template #status-data="{ row }">
+          <UBadge :label="statusLabel[row.status]" :color="statusColor[row.status]" variant="subtle" />
+        </template>
         <template #actions-data="{ row }">
           <div class="flex gap-1">
             <UButton icon="i-heroicons-pencil-square" variant="ghost" size="xs" color="gray" @click="openModal(row)" />
@@ -62,6 +65,9 @@
           </UFormGroup>
           <UFormGroup v-if="!editTarget" label="รหัสผ่าน" required>
             <UInput v-model="form.password" type="password" placeholder="อย่างน้อย 6 ตัวอักษร" />
+          </UFormGroup>
+          <UFormGroup v-if="editTarget" label="สถานะ">
+            <USelect v-model="form.status" :options="statusOptions" option-attribute="label"  value-attribute="value" />
           </UFormGroup>
           <div class="flex justify-end gap-2 pt-2">
             <UButton variant="ghost" color="gray" label="ยกเลิก" @click="isOpen = false" />
@@ -103,12 +109,18 @@ const saving = ref(false)
 const editTarget = ref<Tenant | null>(null)
 const deleteTarget = ref<Tenant | null>(null)
 
-const form = reactive({ firstName: '', lastName: '', email: '', phone: '', password: '' })
+const form = reactive({ firstName: '', lastName: '', email: '', phone: '', password: '' ,status: 0 })
+
+const filterStatusOptions  = [  { label: 'ทั้งหมด', value: 'all' },{ label: 'เปิดการใช้งาน', value: 0 }, { label: 'ปิดการใช้งาน', value: 1 }]
+const statusOptions = [{ label: 'เปิดการใช้งาน', value: 0 },{ label: 'ปิดการใช้งาน', value: 1 }]
+const statusLabel: Record<string, string> = { 0: 'เปิดการใช้งาน', 1: 'ปิดการใช้งาน'}
+const statusColor: Record<string, any> = { 0: 'green', 1: 'red' }
 
 const columns = [
   { key: 'name', label: 'ชื่อ-นามสกุล' },
   { key: 'phone', label: 'เบอร์โทร' },
   { key: 'createdAt', label: 'วันที่เพิ่ม' },
+  { key: 'status', label: 'สถานะ' },
   { key: 'actions', label: '' },
 ]
 
@@ -131,7 +143,7 @@ const onSubmit = async () => {
   saving.value = true
   try {
     if (editTarget.value) {
-      await updateTenant(editTarget.value.id, {  firstName: form.firstName,  lastName: form.lastName,  phone: form.phone})
+      await updateTenant(editTarget.value.id, {  firstName: form.firstName,  lastName: form.lastName,  phone: form.phone , status : Number(form.status)})
     } else {
       await createTenant(form)
     }

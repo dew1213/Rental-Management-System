@@ -117,8 +117,8 @@ definePageMeta({ middleware: 'auth', layout: 'admin' })
 import type { Contract } from '~/types'
 
 const {  contracts, loading, fetchContracts, createContract, updateContract, deleteContract} = useContracts()
-const { houses, fetchHouses } = useHouses()
-const { tenants, fetchTenants } = useTenants()
+const { houses, fetchAvailableHouses } = useHouses()
+const { tenants, fetchAvailableTenants } = useTenants()
 
 const toast = useToast()
 const editTarget = ref<Contract | null>(null)
@@ -271,8 +271,8 @@ const formatDate = (d: string) => new Date(d).toLocaleDateString('th-TH')
 onMounted(async () => {
   await Promise.all([
     fetchContracts(),
-    fetchHouses(),
-    fetchTenants()
+    fetchAvailableHouses(),
+    fetchAvailableTenants()
   ])
 })
 </script>

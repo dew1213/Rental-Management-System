@@ -15,6 +15,7 @@ export interface Tenant {
   email: string
   phone: string
   createdAt: string
+  status: number
 }
 
 export interface Contract {
@@ -44,7 +45,7 @@ export interface MaintenanceRequest {
   contractId: number
   title: string
   description: string
-  status: 'Pending' | 'InProgress' | 'Completed'
+  status: number
   createdAt: string
 }
 
@@ -60,4 +61,7 @@ export interface DashboardStats {
   totalTenants: number
   overduePayments: number
   monthlyRevenue: number
+}
+export interface UpdateMaintenanceStatusRequest {
+  status: number
 }

@@ -50,7 +50,9 @@ Frontend สำหรับ Rental Management System พัฒนาด้วย
 │   ├── useAuth.ts       # JWT auth state
 │   ├── useApi.ts        # API client
 │   ├── useHouses.ts     # House CRUD
-│   └── usePayments.ts   # Payment ops
+│   ├── usecontracts.ts  # contract CRUD
+│   ├── useTenant.ts     # Tenant CRUD
+│   └── usePayment.ts    # Payment ops
 ├── middleware/
 │   ├── auth.ts          # Route guard
 │   └── guest.ts         # Redirect if logged in

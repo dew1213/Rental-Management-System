@@ -6,7 +6,7 @@
     </div>
 
     <UCard :ui="{ body: { padding: '' } }">
-      <UTable :rows="requests" :columns="columns" :loading="loading">
+      <UTable :rows="maintenances" :columns="columns" :loading="loading">
         <template #status-data="{ row }">
           <UBadge :label="statusLabel[row.status]" :color="statusColor[row.status]" variant="subtle" />
         </template>
@@ -17,9 +17,11 @@
           <USelect
             :model-value="row.status"
             :options="statusOptions"
+            option-attribute="label"
+            value-attribute="value"
             size="xs"
             class="w-32"
-            @update:model-value="(val: string) => updateStatus(row.id, val)"
+            @update:model-value="(val: number) => onUpdateStatus(row.id, val)"
           />
         </template>
       </UTable>
@@ -32,15 +34,19 @@ import type { MaintenanceRequest } from '~/types'
 
 definePageMeta({ middleware: 'auth', layout: 'admin' })
 
-const { $api } = useApi()
+const {
+    maintenances,
+    loading,
+    fetchMaintenances,
+    updateStatus
+} = useMaintenances()
+
 const toast = useToast()
 
-const requests = ref<MaintenanceRequest[]>([])
-const loading = ref(false)
+const statusLabel:Record<number, string> = {0: 'รอดำเนินการ', 1: 'กำลังซ่อม', 2: 'เสร็จแล้ว'}
 
-const statusLabel: Record<string, string> = { Pending: 'รอดำเนินการ', InProgress: 'กำลังซ่อม', Completed: 'เสร็จแล้ว' }
-const statusColor: Record<string, any> = { Pending: 'yellow', InProgress: 'blue', Completed: 'green' }
-const statusOptions = ['Pending', 'InProgress', 'Completed']
+const statusColor: Record<number, any>  = { 0: 'yellow', 1: 'blue', 2: 'green'}
+const statusOptions = [ { label: 'รอดำเนินการ', value: 0 }, { label: 'กำลังซ่อม', value: 1 },{ label: 'เสร็จแล้ว', value: 2 }]
 
 const columns = [
   { key: 'title', label: 'หัวข้อ' },
@@ -51,22 +57,27 @@ const columns = [
   { key: 'actions', label: 'อัปเดต' },
 ]
 
-const pendingCount = computed(() => requests.value.filter(r => r.status === 'Pending').length)
+const pendingCount = computed(() =>maintenances.value.filter(x => x.status === 0).length)
 
-const updateStatus = async (id: number, status: string) => {
+const onUpdateStatus = async (id: number, status: number) => {
   try {
-    const updated = await $api<MaintenanceRequest>(`/maintenance/${id}/status?status=${status}`, { method: 'PUT' })
-    const idx = requests.value.findIndex(r => r.id === id)
-    if (idx !== -1) requests.value[idx] = updated
-    toast.add({ title: 'อัปเดตสถานะแล้ว', color: 'green' })
-  } catch { toast.add({ title: 'เกิดข้อผิดพลาด', color: 'red' }) }
+    await updateStatus(id, {status: Number(status)})
+    await fetchMaintenances()
+    toast.add({
+      title: 'อัปเดตสถานะแล้ว',
+      color: 'green'
+    })
+  } catch {
+    toast.add({
+      title: 'เกิดข้อผิดพลาด',
+      color: 'red'
+    })
+  }
 }
 
 const formatDate = (d: string) => new Date(d).toLocaleDateString('th-TH')
 
 onMounted(async () => {
-  loading.value = true
-  try { requests.value = await $api<MaintenanceRequest[]>('/maintenance') }
-  finally { loading.value = false }
+  await fetchMaintenances()
 })
 </script>

@@ -60,12 +60,22 @@ export const useTenants = () => {
     tenants.value = tenants.value.filter(t => t.id !== id)
   }
 
+  const fetchAvailableTenants = async () => {
+      loading.value = true
+      try {
+        tenants.value = await $api<Tenant[]>('/tenants/available')
+      } finally {
+        loading.value = false
+      }
+    }
+
   return {
     tenants,
     loading,
     fetchTenants,
     createTenant,
     updateTenant,
-    deleteTenant
+    deleteTenant,
+    fetchAvailableTenants
   }
 }

@@ -33,6 +33,15 @@ export const useHouses = () => {
     houses.value = houses.value.filter(h => h.id !== id)
   }
 
-  return { houses, loading, fetchHouses, createHouse, updateHouse, deleteHouse }
+  const fetchAvailableHouses = async () => {
+    loading.value = true
+    try {
+      houses.value = await $api<House[]>('/houses/available')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { houses, loading, fetchHouses, createHouse, updateHouse, deleteHouse ,fetchAvailableHouses}
 }
 

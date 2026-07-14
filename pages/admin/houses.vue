@@ -11,7 +11,7 @@
     <!-- Filter -->
     <div class="flex gap-3 mb-4">
       <UInput v-model="search" placeholder="ค้นหาชื่อ, ที่อยู่..." icon="i-heroicons-magnifying-glass" class="max-w-xs" />
-      <USelect  v-model="filterStatus"  :options="statusOptions"  option-attribute="label"  value-attribute="value"  class="w-36"/>
+      <USelect  v-model="filterStatus"  :options="filterStatusOptions"  option-attribute="label"  value-attribute="value"  class="w-36"/>
     </div>
 
     <!-- Table -->
@@ -100,7 +100,9 @@ const deleteTarget = ref<House | null>(null)
 
 const form = reactive({ name: '', address: '', monthlyRent: 0, status: 0 })
 
-const statusOptions = [  { label: 'ทั้งหมด', value: 'all' },{ label: 'ว่าง', value: 0 }, { label: 'เช่าแล้ว', value: 1 },{ label: 'ซ่อมบำรุง', value: 2 }]
+const filterStatusOptions  = [  { label: 'ทั้งหมด', value: 'all' },{ label: 'ว่าง', value: 0 }, { label: 'เช่าแล้ว', value: 1 },{ label: 'ซ่อมบำรุง', value: 2 }]
+const statusOptions = [{ label: 'ว่าง', value: 0 },{ label: 'เช่าแล้ว', value: 1 },{ label: 'ซ่อมบำรุง', value: 2 }
+]
 const statusLabel: Record<string, string> = { 0: 'ว่าง', 1: 'เช่าแล้ว', 2: 'ซ่อมบำรุง' }
 const statusColor: Record<string, any> = { 0: 'green', 1: 'blue', 2: 'yellow' }
 
@@ -125,8 +127,9 @@ const filteredHouses = computed(() => {
       h.address.includes(search.value)
 
     const matchStatus =
-      filterStatus.value === 'all' ||
-      h.status === filterStatus.value
+      filterStatus.value === 'all'
+        ? true
+        : h.status === Number(filterStatus.value)
 
     return matchSearch && matchStatus
   })

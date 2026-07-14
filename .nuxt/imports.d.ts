@@ -33,6 +33,7 @@ export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
 export { useApi } from '../composables/useApi';
 export { useAuth } from '../composables/useAuth';
 export { useHouses } from '../composables/useHouses';
+export { useMaintenances } from '../composables/useMaintenances';
 export { usePayments } from '../composables/usePayments';
 export { useTenants } from '../composables/useTenant';
 export { useContracts } from '../composables/usecontracts';
