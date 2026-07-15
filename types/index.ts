@@ -36,8 +36,13 @@ export interface Payment {
   amount: number
   dueDate: string
   paidDate?: string
-  status: 'Pending' | 'Paid' | 'Overdue'
+  status: number
   note?: string
+}
+
+export interface UpdatePaymentRequest {
+  paidDate: string
+  note: string
 }
 
 export interface MaintenanceRequest {
@@ -65,3 +70,4 @@ export interface DashboardStats {
 export interface UpdateMaintenanceStatusRequest {
   status: number
 }
+

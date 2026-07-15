@@ -182,5 +182,7 @@ const onDelete = async () => {
   }
 }
 
-onMounted(fetchHouses)
+onMounted(async () => {
+  await fetchHouses()
+})
 </script>

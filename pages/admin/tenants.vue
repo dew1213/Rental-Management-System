@@ -166,5 +166,7 @@ const onDelete = async () => {
 
 const formatDate = (d: string) => new Date(d).toLocaleDateString('th-TH')
 
-onMounted(fetchTenants)
+onMounted( async () => {
+  await fetchTenants()
+})
 </script>

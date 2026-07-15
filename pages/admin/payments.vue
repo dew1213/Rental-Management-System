@@ -23,7 +23,7 @@
         </template>
         <template #actions-data="{ row }">
           <UButton
-            v-if="row.status !== 'Paid'"
+            v-if="row.status !== 1"
             icon="i-heroicons-check-circle"
             label="รับชำระ"
             size="xs"
@@ -69,11 +69,16 @@ import type { Payment } from '~/types'
 
 definePageMeta({ middleware: 'auth', layout: 'admin' })
 
-const { $api } = useApi()
+const {
+  payments,
+  loading,
+  fetchPayments,
+  markAsPaid
+} = usePayments()
+
 const toast = useToast()
 
-const allPayments = ref<Payment[]>([])
-const loading = ref(false)
+
 const activeTab = ref(0)
 const payModal = ref(false)
 const saving = ref(false)
@@ -87,9 +92,17 @@ const tabs = [
   { label: 'ชำระแล้ว', icon: 'i-heroicons-check-circle' },
 ]
 
-const statusLabel: Record<string, string> = { Pending: 'รอชำระ', Paid: 'ชำระแล้ว', Overdue: 'ค้างชำระ' }
-const statusColor: Record<string, any> = { Pending: 'yellow', Paid: 'green', Overdue: 'red' }
+const statusLabel : Record<number, string> = {
+  0: 'รอชำระ',
+  1: 'ชำระแล้ว',
+  2: 'ค้างชำระ'
+}
 
+const statusColor :Record<number, any>= {
+  0: 'yellow',
+  1: 'green',
+  2: 'red'
+}
 const columns = [
   { key: 'contractId', label: 'สัญญา #' },
   { key: 'amount', label: 'จำนวนเงิน' },
@@ -99,12 +112,18 @@ const columns = [
   { key: 'actions', label: '' },
 ]
 
-const overdueCount = computed(() => allPayments.value.filter(p => p.status === 'Overdue').length)
+const overdueCount = computed(() =>
+  payments.value.filter(p => p.status === 2).length
+)
 
 const tableRows = computed(() => {
-  if (activeTab.value === 1) return allPayments.value.filter(p => p.status === 'Overdue')
-  if (activeTab.value === 2) return allPayments.value.filter(p => p.status === 'Paid')
-  return allPayments.value
+  if (activeTab.value === 1)
+    return payments.value.filter(p => p.status === 2)
+
+  if (activeTab.value === 2)
+    return payments.value.filter(p => p.status === 1)
+
+  return payments.value
 })
 
 const openPayModal = (p: Payment) => {
@@ -116,24 +135,40 @@ const openPayModal = (p: Payment) => {
 
 const confirmPay = async () => {
   if (!selectedPayment.value) return
+
   saving.value = true
+
   try {
-    const updated = await $api<Payment>(`/payments/${selectedPayment.value.id}/pay`, {
-      method: 'PUT', body: { paidDate: payDate.value, note: payNote.value }
+    await markAsPaid(
+      selectedPayment.value.id,
+      {
+        paidDate: payDate.value,
+        note: payNote.value
+      }
+    )
+
+    toast.add({
+      title: 'บันทึกการชำระสำเร็จ',
+      color: 'green'
     })
-    const idx = allPayments.value.findIndex(p => p.id === selectedPayment.value!.id)
-    if (idx !== -1) allPayments.value[idx] = updated
-    toast.add({ title: 'บันทึกการชำระสำเร็จ', color: 'green' })
+
     payModal.value = false
-  } catch { toast.add({ title: 'เกิดข้อผิดพลาด', color: 'red' }) }
-  finally { saving.value = false }
+  }
+  catch {
+    toast.add({
+      title: 'เกิดข้อผิดพลาด',
+      color: 'red'
+    })
+  }
+  finally {
+    saving.value = false
+  }
 }
 
 const formatDate = (d: string) => new Date(d).toLocaleDateString('th-TH')
 
 onMounted(async () => {
-  loading.value = true
-  try { allPayments.value = await $api<Payment[]>('/payments/overdue') }
-  finally { loading.value = false }
+  await fetchPayments()
 })
+
 </script>
