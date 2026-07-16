@@ -70,4 +70,9 @@ export interface DashboardStats {
 export interface UpdateMaintenanceStatusRequest {
   status: number
 }
+export interface CreateMaintenanceRequest {
+  contractId: number
+  title: string
+  description: string
+}
 

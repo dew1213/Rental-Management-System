@@ -1,6 +1,7 @@
 import type {
   MaintenanceRequest,
-  UpdateMaintenanceStatusRequest
+  UpdateMaintenanceStatusRequest,
+  CreateMaintenanceRequest
 } from '~/types'
 
 export const useMaintenances = () => {
@@ -13,6 +14,7 @@ export const useMaintenances = () => {
 
   const loading = ref(false)
 
+  //admin
   const fetchMaintenances = async () => {
     loading.value = true
     try {
@@ -45,10 +47,42 @@ export const useMaintenances = () => {
     return updated
   }
 
+    // Tenant
+
+   const fetchMyMaintenances = async () => {
+    loading.value = true
+
+    try {
+      maintenances.value =
+        await $api<MaintenanceRequest[]>('/maintenance/my')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const createMaintenance = async (
+    body: CreateMaintenanceRequest
+  ) => {
+    const created =
+      await $api<MaintenanceRequest>(
+        '/maintenance',
+        {
+          method: 'POST',
+          body
+        }
+      )
+
+    maintenances.value.unshift(created)
+
+    return created
+  }
+
   return {
     maintenances,
     loading,
     fetchMaintenances,
-    updateStatus
+    updateStatus,
+    fetchMyMaintenances,
+    createMaintenance
   }
 }
