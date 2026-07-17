@@ -36,23 +36,23 @@
         v-for="p in payments"
         :key="p.id"
         :ui="{ body: { padding: 'p-4' } }"
-        :class="p.status === 'Overdue' ? 'border-red-200' : ''"
+        :class="p.status === 2 ? 'border-red-200' : ''"
       >
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center"
               :class="{
-                'bg-green-50': p.status === 'Paid',
-                'bg-amber-50': p.status === 'Pending',
-                'bg-red-50': p.status === 'Overdue'
+                'bg-green-50': p.status === 1,
+                'bg-amber-50': p.status === 0,
+                'bg-red-50': p.status === 2
               }"
             >
               <UIcon
-                :name="p.status === 'Paid' ? 'i-heroicons-check-circle' : p.status === 'Overdue' ? 'i-heroicons-exclamation-circle' : 'i-heroicons-clock'"
+                :name="p.status === 1 ? 'i-heroicons-check-circle' : p.status === 2 ? 'i-heroicons-exclamation-circle' : 'i-heroicons-clock'"
                 :class="{
-                  'text-green-500': p.status === 'Paid',
-                  'text-amber-500': p.status === 'Pending',
-                  'text-red-500': p.status === 'Overdue'
+                  'text-green-500': p.status === 1,
+                  'text-amber-500': p.status === 0,
+                  'text-red-500': p.status === 2
                 }"
               />
             </div>
@@ -65,7 +65,7 @@
             </div>
           </div>
           <div class="text-right">
-            <p class="text-sm font-bold" :class="p.status === 'Overdue' ? 'text-red-600' : 'text-gray-900'">
+            <p class="text-sm font-bold" :class="p.status === 2 ? 'text-red-600' : 'text-gray-900'">
               ฿{{ p.amount.toLocaleString() }}
             </p>
             <UBadge :label="statusLabel[p.status]" :color="statusColor[p.status]" variant="subtle" size="xs" class="mt-1" />
@@ -84,33 +84,40 @@ import type { Payment } from '~/types'
 
 definePageMeta({ middleware: 'auth', layout: 'tenant' })
 
-const { $api } = useApi()
+const {
+  payments,
+  loading,
+  fetchMyPayments
+} = usePayments()
 
-const payments = ref<Payment[]>([])
-const loading = ref(false)
+const statusLabel: Record<number, string> = {
+  0: 'รอชำระ',
+  1: 'ชำระแล้ว',
+  2: 'ค้างชำระ'
+}
 
-const statusLabel: Record<string, string> = { Pending: 'รอชำระ', Paid: 'ชำระแล้ว', Overdue: 'ค้างชำระ' }
-const statusColor: Record<string, any> = { Pending: 'yellow', Paid: 'green', Overdue: 'red' }
+const statusColor: Record<number, any> = {
+  0: 'yellow',
+  1: 'green',
+  2: 'red'
+}
 
-const paidCount = computed(() => payments.value.filter(p => p.status === 'Paid').length)
-const pendingCount = computed(() => payments.value.filter(p => p.status === 'Pending').length)
-const overdueCount = computed(() => payments.value.filter(p => p.status === 'Overdue').length)
+const paidCount = computed(() =>
+  payments.value.filter(x => x.status === 1).length
+)
+
+const pendingCount = computed(() =>
+  payments.value.filter(x => x.status === 0).length
+)
+
+const overdueCount = computed(() =>
+  payments.value.filter(x => x.status === 2).length
+)
 
 const formatDate = (d: string) => new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
 
 onMounted(async () => {
-  loading.value = true
-  try {
-    payments.value = await $api<Payment[]>('/payments/contract/3')
-  } catch {
-    payments.value = [
-      { id: 1, contractId: 3, amount: 7500, dueDate: '2024-10-01', paidDate: '2024-10-01', status: 'Paid', note: 'โอนผ่าน PromptPay' },
-      { id: 2, contractId: 3, amount: 7500, dueDate: '2024-11-01', paidDate: '2024-11-03', status: 'Paid' },
-      { id: 3, contractId: 3, amount: 7500, dueDate: '2024-12-01', status: 'Overdue' },
-      { id: 4, contractId: 3, amount: 7500, dueDate: '2025-01-01', status: 'Pending' },
-    ]
-  } finally {
-    loading.value = false
-  }
+  await fetchMyPayments()
 })
+
 </script>

@@ -23,6 +23,16 @@ export const usePayments = () => {
     }
   }
 
+   const fetchMyPayments = async () => {
+    loading.value = true
+
+    try {
+      payments.value = await $api('/payments/my')
+    } finally {
+      loading.value = false
+    }
+  }
+
   const markAsPaid = async (
     id: number,
     data: UpdatePaymentRequest
@@ -49,6 +59,7 @@ export const usePayments = () => {
     payments,
     loading,
     fetchPayments,
+    fetchMyPayments,
     markAsPaid
   }
 }
