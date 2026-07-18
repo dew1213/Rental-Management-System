@@ -100,43 +100,92 @@
 </template>
 
 <script setup lang="ts">
+import { useDashboard } from '~/composables/useDashboard'
+
 definePageMeta({ middleware: 'auth', layout: 'admin' })
 
-const { $api } = useApi()
+const {
+  adminDashboard,
+  loading,
+  fetchAdminDashboard
+} = useDashboard()
 
-const overdueList = ref<any[]>([])
-const dashboardStats = ref({ totalHouses: 0, occupiedHouses: 0, totalTenants: 0, monthlyRevenue: 0 })
+const overdueList = computed(
+  () => adminDashboard.value?.overduePayments ?? []
+)
 
-// Mock data for demo — replace with real API calls
+
 onMounted(async () => {
-  try {
-    overdueList.value = await $api<any[]>('/payments/overdue')
-  } catch {
-    // demo mock
-    overdueList.value = [
-      { id: 1, contractId: 3, amount: 7500, dueDate: '2024-11-01', status: 'Overdue' },
-      { id: 2, contractId: 5, amount: 5000, dueDate: '2024-11-01', status: 'Overdue' },
-    ]
-  }
-  dashboardStats.value = { totalHouses: 12, occupiedHouses: 9, totalTenants: 9, monthlyRevenue: 67500 }
+  await fetchAdminDashboard()
 })
 
 const stats = computed(() => [
-  { label: 'บ้านทั้งหมด', value: dashboardStats.value.totalHouses, sub: `ว่าง ${dashboardStats.value.totalHouses - dashboardStats.value.occupiedHouses} หลัง`, icon: 'i-heroicons-home-modern', bg: 'bg-blue-50', color: 'text-blue-500' },
-  { label: 'ผู้เช่าปัจจุบัน', value: dashboardStats.value.totalTenants, sub: 'คนทั้งหมด', icon: 'i-heroicons-users', bg: 'bg-green-50', color: 'text-green-500' },
-  { label: 'ค้างชำระ', value: overdueList.value.length, sub: 'รายการ', icon: 'i-heroicons-exclamation-triangle', bg: 'bg-red-50', color: 'text-red-500' },
-  { label: 'รายรับ/เดือน', value: `฿${dashboardStats.value.monthlyRevenue.toLocaleString()}`, sub: 'ประมาณการ', icon: 'i-heroicons-banknotes', bg: 'bg-amber-50', color: 'text-amber-500' },
+  {
+    label: 'บ้านทั้งหมด',
+    value: adminDashboard.value?.totalHouses ?? 0,
+    sub: `ว่าง ${
+      (adminDashboard.value?.totalHouses ?? 0) -
+      (adminDashboard.value?.occupiedHouses ?? 0) -
+      (adminDashboard.value?.maintenanceHouses ?? 0)
+    } หลัง`,
+    icon: 'i-heroicons-home-modern',
+    bg: 'bg-blue-50',
+    color: 'text-blue-500'
+  },
+  {
+    label: 'ผู้เช่า',
+    value: adminDashboard.value?.totalTenants ?? 0,
+    sub: 'คนทั้งหมด',
+    icon: 'i-heroicons-users',
+    bg: 'bg-green-50',
+    color: 'text-green-500'
+  },
+  {
+    label: 'ค้างชำระ',
+    value: overdueList.value.length,
+    sub: 'รายการ',
+    icon: 'i-heroicons-exclamation-triangle',
+    bg: 'bg-red-50',
+    color: 'text-red-500'
+  },
+  {
+    label: 'รายรับ/เดือน',
+    value: `฿${(adminDashboard.value?.monthlyRevenue ?? 0).toLocaleString()}`,
+    sub: 'เดือนปัจจุบัน',
+    icon: 'i-heroicons-banknotes',
+    bg: 'bg-amber-50',
+    color: 'text-amber-500'
+  }
 ])
 
 const houseStatusData = computed(() => {
-  const total = dashboardStats.value.totalHouses || 1
-  const occupied = dashboardStats.value.occupiedHouses
-  const available = total - occupied - 1
-  const maintenance = 1
+  const total = adminDashboard.value?.totalHouses ?? 0
+  const occupied = adminDashboard.value?.occupiedHouses ?? 0
+  const maintenance = adminDashboard.value?.maintenanceHouses ?? 0
+  const available = total - occupied - maintenance
+
   return [
-    { label: 'เช่าแล้ว', count: occupied, pct: Math.round(occupied / total * 100), dot: 'bg-green-500', color: 'green' as const },
-    { label: 'ว่าง', count: available, pct: Math.round(available / total * 100), dot: 'bg-blue-500', color: 'blue' as const },
-    { label: 'ซ่อมบำรุง', count: maintenance, pct: Math.round(maintenance / total * 100), dot: 'bg-amber-500', color: 'yellow' as const },
+    {
+      label: 'เช่าแล้ว',
+      count: occupied,
+      pct: total ? Math.round(occupied / total * 100) : 0,
+      dot: 'bg-green-500',
+      color: 'green'
+    },
+    {
+      label: 'ว่าง',
+      count: available,
+      pct: total ? Math.round(available / total * 100) : 0,
+      dot: 'bg-blue-500',
+      color: 'blue'
+    },
+    {
+      label: 'ซ่อมบำรุง',
+      count: maintenance,
+      pct: total ? Math.round(maintenance / total * 100) : 0,
+      dot: 'bg-amber-500',
+      color: 'yellow'
+    }
   ]
 })
 

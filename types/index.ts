@@ -61,12 +61,21 @@ export interface LoginResponse {
 }
 
 export interface DashboardStats {
-  totalHouses: number
+   totalHouses: number
   occupiedHouses: number
+  maintenanceHouses: number
   totalTenants: number
-  overduePayments: number
   monthlyRevenue: number
+  overduePayments: Payment[]
 }
+export interface TenantDashboard {
+  contract: Contract | null
+  nextPayment: Payment | null
+  pendingMaintenance: number
+  completedMaintenance: number
+  // tenantName:string
+}
+
 export interface UpdateMaintenanceStatusRequest {
   status: number
 }

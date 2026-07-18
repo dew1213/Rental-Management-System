@@ -32,6 +32,7 @@ export { definePageMeta } from '../node_modules/nuxt/dist/pages/runtime/composab
 export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
 export { useApi } from '../composables/useApi';
 export { useAuth } from '../composables/useAuth';
+export { useDashboard } from '../composables/useDashboard';
 export { useHouses } from '../composables/useHouses';
 export { useMaintenances } from '../composables/useMaintenances';
 export { usePayments } from '../composables/usePayments';

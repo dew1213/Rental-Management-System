@@ -5,7 +5,7 @@
       <div class="flex items-start justify-between">
         <div>
           <p class="text-xs text-gray-400 mb-0.5">ยินดีต้อนรับกลับ</p>
-          <h2 class="text-lg font-bold text-gray-900">{{ userName }} 👋</h2>
+          <h2 class="text-lg font-bold text-gray-900">{{ tenantDashboard?.contract?.tenantName || userName }} 👋</h2>
           <p class="text-sm text-gray-500 mt-1">{{ formatDate(new Date().toISOString()) }}</p>
         </div>
         <div class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
@@ -13,12 +13,18 @@
         </div>
       </div>
     </UCard>
+    <div v-if="loading" class="flex justify-center py-16">
+      <UIcon
+        name="i-heroicons-arrow-path"
+        class="animate-spin text-2xl text-primary"
+      />
+    </div>
 
     <!-- Contract Info -->
-    <div v-if="contract" class="space-y-4">
-      <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider">ข้อมูลการเช่า</h3>
+    <div v-else-if="contract">
+      <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-3">ข้อมูลการเช่า</h3>
 
-      <UCard>
+      <UCard class="mb-5">
         <div class="flex items-start gap-4">
           <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
             <UIcon name="i-heroicons-home-modern" class="text-blue-500" />
@@ -57,27 +63,36 @@
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center"
-              :class="nextPayment.status === 'Overdue' ? 'bg-red-50' : 'bg-amber-50'"
+              :class="nextPayment.status === 2 ? 'bg-red-50' : 'bg-amber-50'"
             >
               <UIcon name="i-heroicons-banknotes"
-                :class="nextPayment.status === 'Overdue' ? 'text-red-500' : 'text-amber-500'"
+                :class="nextPayment.status === 2 ? 'text-red-500' : 'text-amber-500'"
               />
             </div>
             <div>
               <p class="text-sm font-medium text-gray-800">
-                {{ nextPayment.status === 'Overdue' ? '⚠️ ค้างชำระ' : 'ค่าเช่างวดถัดไป' }}
+                {{ nextPayment.status === 2 ? '⚠️ ค้างชำระ' : 'ค่าเช่างวดถัดไป' }}
               </p>
               <p class="text-xs text-gray-400">ครบกำหนด {{ formatDate(nextPayment.dueDate) }}</p>
             </div>
           </div>
-          <p class="text-lg font-bold" :class="nextPayment.status === 'Overdue' ? 'text-red-600' : 'text-gray-900'">
+          <p class="text-lg font-bold" :class="nextPayment.status === 2 ? 'text-red-600' : 'text-gray-900'">
             ฿{{ nextPayment.amount.toLocaleString() }}
           </p>
         </div>
       </UCard>
 
+       <!-- <UAlert
+        v-else
+        color="green"
+        variant="subtle"
+        icon="i-heroicons-check-circle"
+        title="ไม่มีรายการที่ต้องชำระ"
+        description="คุณชำระค่าเช่าครบทุกงวดแล้ว"
+      /> -->
+
       <!-- Quick actions -->
-      <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider">เมนูด่วน</h3>
+      <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-3">เมนูด่วน</h3>
       <div class="grid grid-cols-2 gap-3">
         <NuxtLink to="/tenant/payments">
           <UCard class="cursor-pointer hover:border-primary-300 transition-colors" :ui="{ body: { padding: 'p-4' } }">
@@ -110,39 +125,67 @@
 </template>
 
 <script setup lang="ts">
-import type { Contract, Payment } from '~/types'
+import { useDashboard } from '~/composables/useDashboard'
 
 definePageMeta({ middleware: 'auth', layout: 'tenant' })
 
-const { $api } = useApi()
+const {
+  tenantDashboard,
+  loading,
+  fetchTenantDashboard
+} = useDashboard()
+
+const contract = computed(
+  () => tenantDashboard.value?.contract
+)
+
+const nextPayment = computed(
+  () => tenantDashboard.value?.nextPayment
+)
+
 const { userName } = useAuth()
 
-const contract = ref<Contract | null>(null)
-const nextPayment = ref<Payment | null>(null)
 
-const contractStatusLabel: Record<string, string> = { Active: 'กำลังเช่า', Expired: 'หมดสัญญา', Terminated: 'ยกเลิก' }
-const contractStatusColor: Record<string, any> = { Active: 'green', Expired: 'gray', Terminated: 'red' }
+const contractStatusLabel: Record<number, string> = {
+  0: 'กำลังเช่า',
+  1: 'หมดสัญญา',
+  2: 'ยกเลิก'
+}
+
+const contractStatusColor: Record<number, any> = {
+  0: 'green',
+  1: 'gray',
+  2: 'red'
+}
 
 const daysLeft = computed(() => {
-  if (!contract.value) return 0
-  const diff = new Date(contract.value.endDate).getTime() - Date.now()
-  return Math.max(0, Math.ceil(diff / 86400000))
+  if (!contract.value)
+    return 0
+
+  const diff =
+    new Date(contract.value.endDate).getTime() -
+    Date.now()
+
+  return Math.max(
+    0,
+    Math.ceil(diff / 86400000)
+  )
 })
 
-const formatDate = (d: string) => new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+const formatDate = (date?: string) => {
+  if (!date) return '-'
+
+  return new Date(date).toLocaleDateString(
+    'th-TH',
+    {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }
+  )
+}
 
 onMounted(async () => {
-  try {
-    const contracts = await $api<Contract[]>('/contracts/my')
-    contract.value = contracts.find(c => c.status === 'Active') || contracts[0] || null
-    if (contract.value) {
-      const payments = await $api<Payment[]>(`/payments/contract/${contract.value.id}`)
-      nextPayment.value = payments.find(p => p.status !== 'Paid') || null
-    }
-  } catch {
-    // demo
-    contract.value = { id: 3, houseId: 2, houseName: 'บ้านซอยสุขุมวิท 22', tenantId: 1, tenantName: userName.value || '', startDate: '2024-01-01', endDate: '2025-01-01', monthlyRent: 7500, status: 'Active' }
-    nextPayment.value = { id: 5, contractId: 3, amount: 7500, dueDate: '2024-12-01', status: 'Pending' }
-  }
+  await fetchTenantDashboard()
 })
 </script>
