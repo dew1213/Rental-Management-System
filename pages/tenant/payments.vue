@@ -69,6 +69,17 @@
               ฿{{ p.amount.toLocaleString() }}
             </p>
             <UBadge :label="statusLabel[p.status]" :color="statusColor[p.status]" variant="subtle" size="xs" class="mt-1" />
+            <!-- <UButton
+              v-if="p.status === 0"
+              size="xs"
+              color="primary"
+              variant="solid"
+              class="mt-2"
+              icon="i-heroicons-banknotes"
+              @click="goPayment(p.id)"
+            >
+              ชำระเงิน
+            </UButton> -->
           </div>
         </div>
         <div v-if="p.note" class="mt-2 text-xs text-gray-400 bg-gray-50 rounded px-3 py-1.5">
@@ -115,6 +126,7 @@ const overdueCount = computed(() =>
 )
 
 const formatDate = (d: string) => new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
+
 
 onMounted(async () => {
   await fetchMyPayments()

@@ -1,8 +1,23 @@
 <template>
   <div>
     <div class="flex items-center justify-between mb-5">
-      <h2 class="text-base font-semibold text-gray-800">การชำระเงิน</h2>
-      <UBadge v-if="overdueCount > 0" :label="`ค้างชำระ ${overdueCount} รายการ`" color="red" />
+      <h2 class="text-base font-semibold text-gray-800">
+        การชำระเงิน
+      </h2>
+
+      <div class="flex gap-2">
+        <UBadge
+          v-if="overdueCount > 0"
+          :label="`ค้างชำระ ${overdueCount} รายการ`"
+          color="red"
+        />
+
+        <UButton
+          icon="i-heroicons-plus"
+          label="สร้างบิล"
+          @click="openCreateModal"
+        />
+      </div>
     </div>
 
     <UTabs :items="tabs" v-model="activeTab" class="mb-4" />
@@ -61,6 +76,71 @@
         </template>
       </UCard>
     </UModal>
+
+    <UModal v-model="createModal">
+      <UCard>
+        <template #header>
+          <h3 class="font-semibold">
+            สร้างรายการชำระเงิน
+          </h3>
+        </template>
+
+        <UForm
+          :state="form"
+          @submit="createPayment"
+          class="space-y-4"
+        >
+
+          <UFormGroup
+            label="ผู้เช่า"
+            required
+          >
+            <USelectMenu
+              v-model="form.contractId"
+              :options="contractOptions"
+              value-attribute="value"
+            />
+          </UFormGroup>
+
+          <UFormGroup
+            label="จำนวนเงิน"
+          >
+            <UInput
+              v-model.number="form.amount"
+              type="number"
+            />
+          </UFormGroup>
+
+          <UFormGroup
+            label="วันครบกำหนด"
+          >
+            <UInput
+              v-model="form.dueDate"
+              type="date"
+            />
+          </UFormGroup>
+        </UForm>
+
+          <template #footer>
+            <div class="flex justify-end gap-2">
+              <UButton
+                variant="ghost"
+                @click="createModal = false"
+              >
+                ยกเลิก
+              </UButton>
+
+              <UButton
+                :loading="creating"
+                @click="createPayment"
+              >
+                สร้างบิล
+              </UButton>
+            </div>
+          </template>
+      </UCard>
+    </UModal>
+
   </div>
 </template>
 
@@ -73,7 +153,10 @@ const {
   payments,
   loading,
   fetchPayments,
-  markAsPaid
+  markAsPaid,
+  contracts,
+  fetchActiveContracts,
+  createPaymentApi
 } = usePayments()
 
 const toast = useToast()
@@ -85,6 +168,15 @@ const saving = ref(false)
 const selectedPayment = ref<Payment | null>(null)
 const payDate = ref(new Date().toISOString().slice(0, 10))
 const payNote = ref('')
+
+const createModal = ref(false)
+const creating = ref(false)
+
+const form = reactive({
+  contractId: 0,
+  amount: 0,
+  dueDate: ''
+})
 
 const tabs = [
   { label: 'ทั้งหมด', icon: 'i-heroicons-list-bullet' },
@@ -131,6 +223,48 @@ const openPayModal = (p: Payment) => {
   payDate.value = new Date().toISOString().slice(0, 10)
   payNote.value = ''
   payModal.value = true
+}
+
+const openCreateModal = async () => {
+
+  await fetchActiveContracts()
+
+  form.contractId = 0
+  form.amount = 0
+  form.dueDate = ''
+  createModal.value = true
+}
+
+const contractOptions = computed(() =>
+  contracts.value.map(c => ({
+    label: `${c.tenantName} (${c.houseName})`,
+    value: c.id
+  }))
+)
+
+const createPayment = async () => {
+
+  creating.value = true
+
+  try{
+
+    await createPaymentApi(form)
+
+    toast.add({
+      title:'สร้างบิลสำเร็จ',
+      color:'green'
+    })
+
+    createModal.value=false
+
+    await fetchPayments()
+
+  }finally{
+
+    creating.value=false
+
+  }
+
 }
 
 const confirmPay = async () => {

@@ -10,7 +10,10 @@ export const usePayments = () => {
     'payments',
     () => []
   )
-
+  const contracts = useState<any[]>(
+      'payment-contracts',
+      ()=>[]
+  )
   const loading = ref(false)
 
   const fetchPayments = async () => {
@@ -23,7 +26,25 @@ export const usePayments = () => {
     }
   }
 
-   const fetchMyPayments = async () => {
+  const fetchActiveContracts = async ()=>{
+
+      contracts.value=
+          await $api('/contracts/active')
+
+  }
+  const createPaymentApi = async (body:any)=>{
+
+      await $api('/payments',{
+
+          method:'POST',
+
+          body
+
+      })
+
+  }
+  
+  const fetchMyPayments = async () => {
     loading.value = true
 
     try {
@@ -54,12 +75,15 @@ export const usePayments = () => {
 
     return res
   }
-
+  
   return {
     payments,
     loading,
     fetchPayments,
     fetchMyPayments,
-    markAsPaid
+    markAsPaid,
+    contracts,
+    fetchActiveContracts,
+    createPaymentApi
   }
 }
