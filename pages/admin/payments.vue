@@ -37,15 +37,31 @@
           <span class="text-sm text-gray-400">{{ row.paidDate ? formatDate(row.paidDate) : '-' }}</span>
         </template>
         <template #actions-data="{ row }">
-          <UButton
-            v-if="row.status !== 1"
-            icon="i-heroicons-check-circle"
-            label="รับชำระ"
-            size="xs"
-            color="green"
-            variant="soft"
-            @click="openPayModal(row)"
-          />
+          <div class="flex items-center gap-2">
+
+            <UButton
+              v-if="row.slipImageUrl"
+              icon="i-heroicons-photo"
+              color="blue"
+              variant="soft"
+              size="xs"
+              @click="openSlip(row.slipImageUrl)"
+            >
+              ดูสลิป
+            </UButton>
+
+            <UButton
+              v-if="row.status != 1"
+              icon="i-heroicons-check-circle"
+              color="green"
+              variant="soft"
+              size="xs"
+              @click="openPayModal(row)"
+            >
+              รับชำระ
+            </UButton>
+
+          </div>
         </template>
       </UTable>
     </UCard>
@@ -148,7 +164,8 @@
 import type { Payment } from '~/types'
 
 definePageMeta({ middleware: 'auth', layout: 'admin' })
-
+const config = useRuntimeConfig()
+const apiBase = config.public.apiBase.replace('/api', '')
 const {
   payments,
   loading,
@@ -181,19 +198,22 @@ const form = reactive({
 const tabs = [
   { label: 'ทั้งหมด', icon: 'i-heroicons-list-bullet' },
   { label: 'ค้างชำระ', icon: 'i-heroicons-exclamation-triangle' },
+  { label: 'รอตรวจสอบ', icon: 'i-heroicons-check-circle' },
   { label: 'ชำระแล้ว', icon: 'i-heroicons-check-circle' },
 ]
 
-const statusLabel : Record<number, string> = {
+const statusLabel = {
   0: 'รอชำระ',
   1: 'ชำระแล้ว',
-  2: 'ค้างชำระ'
+  2: 'ค้างชำระ',
+  3: 'รอตรวจสอบ'
 }
 
-const statusColor :Record<number, any>= {
+const statusColor = {
   0: 'yellow',
   1: 'green',
-  2: 'red'
+  2: 'red',
+  3: 'blue'
 }
 const columns = [
   { key: 'contractId', label: 'สัญญา #' },
@@ -213,10 +233,16 @@ const tableRows = computed(() => {
     return payments.value.filter(p => p.status === 2)
 
   if (activeTab.value === 2)
+    return payments.value.filter(p => p.status === 3)
+
+  if (activeTab.value === 3)
     return payments.value.filter(p => p.status === 1)
 
   return payments.value
 })
+const openSlip = (path: string) => {
+  window.open(`${apiBase}${path}`, '_blank')
+}
 
 const openPayModal = (p: Payment) => {
   selectedPayment.value = p
@@ -301,6 +327,9 @@ const confirmPay = async () => {
 
 const formatDate = (d: string) => new Date(d).toLocaleDateString('th-TH')
 
+const pendingReviewCount = computed(() =>
+  payments.value.filter(p => p.status === 3).length
+)
 onMounted(async () => {
   await fetchPayments()
 })

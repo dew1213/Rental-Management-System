@@ -75,6 +75,27 @@ export const usePayments = () => {
 
     return res
   }
+  const uploadSlip = async (
+    paymentId: number,
+    file: File,
+    note?: string
+  ) => {
+
+    const form = new FormData()
+
+    form.append('Slip', file)
+
+    form.append('Note', note ?? '')
+
+    await $api(
+      `/payments/${paymentId}/upload-slip`,
+      {
+        method: 'POST',
+        body: form
+      }
+    )
+
+  }
   
   return {
     payments,
@@ -84,6 +105,7 @@ export const usePayments = () => {
     markAsPaid,
     contracts,
     fetchActiveContracts,
-    createPaymentApi
+    createPaymentApi,
+    uploadSlip
   }
 }

@@ -36,7 +36,10 @@
         v-for="p in payments"
         :key="p.id"
         :ui="{ body: { padding: 'p-4' } }"
-        :class="p.status === 2 ? 'border-red-200' : ''"
+        :class="{
+          'border-red-200': p.status === 2,
+          'border-blue-200': p.status === 3
+        }"
       >
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -44,15 +47,25 @@
               :class="{
                 'bg-green-50': p.status === 1,
                 'bg-amber-50': p.status === 0,
-                'bg-red-50': p.status === 2
+                'bg-red-50': p.status === 2,
+                'bg-blue-50': p.status === 3
               }"
             >
               <UIcon
-                :name="p.status === 1 ? 'i-heroicons-check-circle' : p.status === 2 ? 'i-heroicons-exclamation-circle' : 'i-heroicons-clock'"
+                :name="
+                  p.status === 1
+                    ? 'i-heroicons-check-circle'
+                    : p.status === 2
+                      ? 'i-heroicons-exclamation-circle'
+                      : p.status === 3
+                        ? 'i-heroicons-arrow-path'
+                        : 'i-heroicons-clock'
+                "
                 :class="{
                   'text-green-500': p.status === 1,
-                  'text-amber-500': p.status === 0,
-                  'text-red-500': p.status === 2
+                  'text-red-500': p.status === 2,
+                  'text-blue-500': p.status === 3,
+                  'text-amber-500': p.status === 0
                 }"
               />
             </div>
@@ -68,25 +81,95 @@
             <p class="text-sm font-bold" :class="p.status === 2 ? 'text-red-600' : 'text-gray-900'">
               ฿{{ p.amount.toLocaleString() }}
             </p>
-            <UBadge :label="statusLabel[p.status]" :color="statusColor[p.status]" variant="subtle" size="xs" class="mt-1" />
-            <!-- <UButton
-              v-if="p.status === 0"
+            <UBadge :label="statusLabel[p.status]" :color="statusColor[p.status]" variant="subtle" size="xs" class="mt-1 mr-3" />
+            
+            <UButton
+              v-if="p.status === 0 || p.status === 2"
               size="xs"
               color="primary"
               variant="solid"
               class="mt-2"
               icon="i-heroicons-banknotes"
-              @click="goPayment(p.id)"
+              @click="openUploadModal(p)"
             >
               ชำระเงิน
-            </UButton> -->
+            </UButton>
           </div>
         </div>
         <div v-if="p.note" class="mt-2 text-xs text-gray-400 bg-gray-50 rounded px-3 py-1.5">
           {{ p.note }}
         </div>
+        <div
+          v-if="p.status === 3"
+          class="mt-2 text-xs text-blue-600 bg-blue-50 rounded px-3 py-2"
+        >
+          ส่งสลิปแล้ว กำลังรอผู้ดูแลตรวจสอบ
+        </div>
       </UCard>
     </div>
+
+    <UModal v-model="uploadModal">
+      <UCard>
+        <template #header>
+          <h3 class="font-semibold">
+            ชำระเงิน
+          </h3>
+        </template>
+
+        <div class="space-y-4">
+
+          <div class="bg-gray-50 rounded p-3">
+            <p class="text-sm text-gray-500">
+              จำนวนเงิน
+            </p>
+
+            <p class="text-2xl font-bold">
+              ฿{{ selectedPayment?.amount.toLocaleString() }}
+            </p>
+          </div>
+
+          <UFormGroup label="แนบสลิป">
+            <UInput
+              type="file"
+              accept="image/*"
+              @change="onFileChange"
+            />
+          </UFormGroup>
+
+          <UFormGroup label="หมายเหตุ">
+            <UTextarea
+              v-model="note"
+            />
+          </UFormGroup>
+
+        </div>
+
+        <template #footer>
+
+          <div class="flex justify-end gap-2">
+
+            <UButton
+              color="gray"
+              variant="ghost"
+              @click="uploadModal=false"
+            >
+              ยกเลิก
+            </UButton>
+
+            <UButton
+              color="primary"
+              :loading="uploading"
+              @click="submitPayment"
+            >
+              ส่งสลิป
+            </UButton>
+
+          </div>
+
+        </template>
+
+      </UCard>
+    </UModal>
   </div>
 </template>
 
@@ -98,19 +181,30 @@ definePageMeta({ middleware: 'auth', layout: 'tenant' })
 const {
   payments,
   loading,
-  fetchMyPayments
+  fetchMyPayments,
+  uploadSlip 
 } = usePayments()
+const toast = useToast()
+const uploadModal = ref(false)
+const slipFile = ref<File | null>(null)
+const selectedPayment = ref<Payment | null>(null)
 
-const statusLabel: Record<number, string> = {
+const uploading = ref(false)
+
+
+const note = ref('')
+const statusLabel = {
   0: 'รอชำระ',
   1: 'ชำระแล้ว',
-  2: 'ค้างชำระ'
+  2: 'ค้างชำระ',
+  3: 'รอตรวจสอบ'
 }
 
-const statusColor: Record<number, any> = {
+const statusColor = {
   0: 'yellow',
   1: 'green',
-  2: 'red'
+  2: 'red',
+  3: 'blue'
 }
 
 const paidCount = computed(() =>
@@ -127,6 +221,56 @@ const overdueCount = computed(() =>
 
 const formatDate = (d: string) => new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
 
+const openUploadModal = (payment: Payment) => {
+  selectedPayment.value = payment
+  slipFile.value = null
+  note.value = ''
+  uploadModal.value = true
+}
+
+const onFileChange = (files: FileList | File[] | null) => {
+  if (!files) return
+
+  if (files instanceof FileList) {
+    slipFile.value = files[0] ?? null
+  } else {
+    slipFile.value = files[0] ?? null
+  }
+}
+const submitPayment = async () => {
+
+  if (!selectedPayment.value || !slipFile.value) {
+    toast.add({
+      title: 'กรุณาเลือกสลิป',
+      color: 'red'
+    })
+    return
+  }
+
+  uploading.value = true
+  try {
+    console.log(slipFile.value)
+    await uploadSlip(
+      selectedPayment.value.id,
+      slipFile.value,
+      note.value
+    )
+
+    toast.add({
+      title: 'ส่งสลิปเรียบร้อย',
+      color: 'green'
+    })
+
+    uploadModal.value = false
+
+    await fetchMyPayments()
+
+  } finally {
+
+    uploading.value = false
+
+  }
+}
 
 onMounted(async () => {
   await fetchMyPayments()
