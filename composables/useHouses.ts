@@ -5,11 +5,32 @@ export const useHouses = () => {
 
   const houses = ref<House[]>([])
   const loading = ref(false)
+  const totalItems = ref(0)
+  const totalPages = ref(0)
+  const fetchHouses = async (
+    page = 1,
+    pageSize = 10,
+    search = '',
+    status?: number
+  ) => {
 
-  const fetchHouses = async () => {
     loading.value = true
+
     try {
-      houses.value = await $api<House[]>('/houses')
+
+      const result = await $api<any>('/houses', {
+        query: {
+          page,
+          pageSize,
+          search,
+          status
+        }
+      })
+
+      houses.value = result.items
+      totalItems.value = result.totalItems
+      totalPages.value = result.totalPages
+
     } finally {
       loading.value = false
     }
@@ -42,6 +63,6 @@ export const useHouses = () => {
     }
   }
 
-  return { houses, loading, fetchHouses, createHouse, updateHouse, deleteHouse ,fetchAvailableHouses}
+  return { houses, loading, fetchHouses, createHouse, updateHouse, deleteHouse ,fetchAvailableHouses,totalItems,totalPages}
 }
 

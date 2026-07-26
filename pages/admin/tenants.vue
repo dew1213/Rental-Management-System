@@ -3,15 +3,16 @@
     <div class="flex items-center justify-between mb-5">
       <div>
         <h2 class="text-base font-semibold text-gray-800">จัดการผู้เช่า</h2>
-        <p class="text-xs text-gray-400">ทั้งหมด {{ tenants.length }} คน</p>
+        <p class="text-xs text-gray-400">ทั้งหมด {{ totalItems }} คน</p>
       </div>
       <UButton icon="i-heroicons-user-plus" label="เพิ่มผู้เช่า" @click="openModal()" />
     </div>
-
-    <UInput v-model="search" placeholder="ค้นหาชื่อ, อีเมล..." icon="i-heroicons-magnifying-glass" class="max-w-xs mb-4" />
-
+    <div class="flex gap-3 mb-4">
+      <UInput v-model="search" placeholder="ค้นหาชื่อ, อีเมล..." icon="i-heroicons-magnifying-glass" class="max-w-xs " />
+      <USelect  v-model="filterStatus"  :options="filterStatusOptions"  option-attribute="label"  value-attribute="value"  class="w-36"/>
+    </div>
     <UCard :ui="{ body: { padding: '' } }">
-      <UTable :rows="filteredTenants" :columns="columns" :loading="loading">
+      <UTable :rows="tenants" :columns="columns" :loading="loading">
         <template #name-data="{ row }">
           <div class="flex items-center gap-3">
             <UAvatar :alt="`${row.firstName} ${row.lastName}`" size="sm" />
@@ -38,7 +39,13 @@
         </template>
       </UTable>
     </UCard>
-
+    <div class="mt-4 flex justify-end">
+      <UPagination
+        v-model="page"
+        :page-count="pageSize"
+        :total="totalItems"
+      />
+    </div>
     <!-- Modal Add/Edit -->
     <UModal v-model="isOpen">
       <UCard>
@@ -98,11 +105,14 @@ import type { Tenant } from '~/types'
 
 definePageMeta({ middleware: 'auth', layout: 'admin' })
 
-const {  tenants,loading,fetchTenants,  createTenant,  updateTenant,  deleteTenant} = useTenants()
+const {  tenants,loading,fetchTenants,  createTenant,  updateTenant,  deleteTenant,totalItems,totalPages} = useTenants()
 const toast = useToast()
 
-
+const page = ref(1)
+const pageSize = ref(10)
+const filterStatus = ref<number | undefined>()
 const search = ref('')
+
 const isOpen = ref(false)
 const deleteConfirm = ref(false)
 const saving = ref(false)
@@ -111,7 +121,7 @@ const deleteTarget = ref<Tenant | null>(null)
 
 const form = reactive({ firstName: '', lastName: '', email: '', phone: '', password: '' ,status: 0 })
 
-const filterStatusOptions  = [  { label: 'ทั้งหมด', value: 'all' },{ label: 'เปิดการใช้งาน', value: 0 }, { label: 'ปิดการใช้งาน', value: 1 }]
+const filterStatusOptions = [{label: 'ทั้งหมด',value: undefined},{ label: 'เปิดการใช้งาน', value: 0},{label: 'ปิดการใช้งาน', value: 1}]
 const statusOptions = [{ label: 'เปิดการใช้งาน', value: 0 },{ label: 'ปิดการใช้งาน', value: 1 }]
 const statusLabel: Record<string, string> = { 0: 'เปิดการใช้งาน', 1: 'ปิดการใช้งาน'}
 const statusColor: Record<string, any> = { 0: 'green', 1: 'red' }
@@ -123,12 +133,13 @@ const columns = [
   { key: 'status', label: 'สถานะ' },
   { key: 'actions', label: '' },
 ]
-
-const filteredTenants = computed(() => tenants.value.filter(t =>
-  !search.value ||
-  `${t.firstName} ${t.lastName}`.includes(search.value) ||
-  t.email.includes(search.value)
-))
+let timer: ReturnType<typeof setTimeout>
+const searchDebounce = ref('')
+// const filteredTenants = computed(() => tenants.value.filter(t =>
+//   !search.value ||
+//   `${t.firstName} ${t.lastName}`.includes(search.value) ||
+//   t.email.includes(search.value)
+// ))
 
 const openModal = (t?: Tenant) => {
   editTarget.value = t || null
@@ -146,6 +157,14 @@ const onSubmit = async () => {
       await updateTenant(editTarget.value.id, {  firstName: form.firstName,  lastName: form.lastName,  phone: form.phone , status : Number(form.status)})
     } else {
       await createTenant(form)
+      await fetchTenants(
+          page.value,
+          pageSize.value,
+          searchDebounce.value,
+          filterStatus.value === -1
+            ? undefined
+            : filterStatus.value
+      )
     }
     toast.add({ title: editTarget.value ? 'แก้ไขสำเร็จ' : 'เพิ่มผู้เช่าสำเร็จ', color: 'green' })
     isOpen.value = false
@@ -166,7 +185,49 @@ const onDelete = async () => {
 
 const formatDate = (d: string) => new Date(d).toLocaleDateString('th-TH')
 
-onMounted( async () => {
-  await fetchTenants()
+watch(
+  [searchDebounce, filterStatus],
+  () => {
+    page.value = 1
+
+    fetchTenants(
+      page.value,
+      pageSize.value,
+      searchDebounce.value,
+      filterStatus.value === -1
+        ? undefined
+        : filterStatus.value
+    )
+  }
+)
+
+watch(page, () => {
+  fetchTenants(
+    page.value,
+    pageSize.value,
+    search.value,
+    filterStatus.value === -1
+    ? undefined
+    : filterStatus.value
+  )
+})
+
+watch(search, () => {
+  clearTimeout(timer)
+
+  timer = setTimeout(() => {
+    searchDebounce.value = search.value
+  }, 500)
+})
+
+onMounted(() => {
+  searchDebounce.value = ''
+
+  fetchTenants(
+    page.value,
+    pageSize.value,
+    '',
+    undefined
+  )
 })
 </script>

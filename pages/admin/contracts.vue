@@ -1,8 +1,28 @@
 <template>
   <div>
     <div class="flex items-center justify-between mb-5">
-      <h2 class="text-base font-semibold text-gray-800">สัญญาเช่า</h2>
+      <div>
+        <h2 class="text-base font-semibold text-gray-800">สัญญาเช่า</h2>
+        <p class="text-xs text-gray-400">ทั้งหมด {{ totalItems  }} หลัง</p>
+      </div>
       <UButton icon="i-heroicons-document-plus" label="ออกสัญญาใหม่" @click="openModal()" />
+    </div>
+
+    <div class="flex gap-3 mb-4">
+      <UInput
+        v-model="search"
+        placeholder="ค้นหาสัญญา, บ้าน, ผู้เช่า..."
+        icon="i-heroicons-magnifying-glass"
+        class="max-w-xs"
+      />
+
+      <USelect
+        v-model="filterStatus"
+        :options="filterStatusOptions"
+        option-attribute="label"
+        value-attribute="value"
+        class="w-40"
+      />
     </div>
 
     <UCard :ui="{ body: { padding: '' } }">
@@ -40,6 +60,14 @@
       </template>
       </UTable>
     </UCard>
+
+    <div class="flex justify-end mt-4">
+      <UPagination
+        v-model="page"
+        :page-count="pageSize"
+        :total="totalItems"
+      />
+    </div>
 
     <UModal v-model="isOpen">
       <UCard>
@@ -116,7 +144,7 @@
 definePageMeta({ middleware: 'auth', layout: 'admin' })
 import type { Contract } from '~/types'
 
-const {  contracts, loading, fetchContracts, createContract, updateContract, deleteContract} = useContracts()
+const {  contracts, loading, fetchContracts, createContract, updateContract, deleteContract,totalItems,totalPages} = useContracts()
 const { houses, fetchAvailableHouses } = useHouses()
 const { tenants, fetchAvailableTenants } = useTenants()
 
@@ -124,6 +152,30 @@ const toast = useToast()
 const editTarget = ref<Contract | null>(null)
 const deleteTarget = ref<Contract | null>(null)
 const deleteConfirm = ref(false)
+const filterStatus = ref<number | undefined>()
+const searchDebounce = ref('')
+let timer: ReturnType<typeof setTimeout>
+const search = ref('')
+const filterStatusOptions = [
+  {
+    label: 'ทั้งหมด',
+    value: undefined
+  },
+  {
+    label: 'กำลังเช่า',
+    value: 0
+  },
+  {
+    label: 'หมดสัญญา',
+    value: 1
+  },
+  {
+    label: 'ยกเลิก',
+    value: 2
+  }
+]
+const page = ref(1)
+const pageSize = ref(10)
 
 const isOpen = ref(false)
 const saving = ref(false)
@@ -268,9 +320,46 @@ const onDelete = async () => {
 
 const formatDate = (d: string) => new Date(d).toLocaleDateString('th-TH')
 
+watch(search, () => {
+  clearTimeout(timer)
+
+  timer = setTimeout(() => {
+    searchDebounce.value = search.value
+  }, 500)
+})
+
+watch([searchDebounce, filterStatus], () => {
+
+    page.value = 1
+
+    fetchContracts(
+        page.value,
+        pageSize.value,
+        searchDebounce.value,
+        filterStatus.value
+    )
+
+})
+
+watch(page, () => {
+
+    fetchContracts(
+        page.value,
+        pageSize.value,
+        searchDebounce.value,
+        filterStatus.value
+    )
+
+})
+
 onMounted(async () => {
   await Promise.all([
-    fetchContracts(),
+    fetchContracts(
+      page.value,
+      pageSize.value,
+      '',
+      undefined
+    ),
     fetchAvailableHouses(),
     fetchAvailableTenants()
   ])

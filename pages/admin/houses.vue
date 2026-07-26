@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between mb-5">
       <div>
         <h2 class="text-base font-semibold text-gray-800">รายการบ้าน</h2>
-        <p class="text-xs text-gray-400">ทั้งหมด {{ houses.length }} หลัง</p>
+        <p class="text-xs text-gray-400">ทั้งหมด {{ totalItems  }} หลัง</p>
       </div>
       <UButton icon="i-heroicons-plus" label="เพิ่มบ้าน" @click="openModal()" />
     </div>
@@ -16,7 +16,7 @@
 
     <!-- Table -->
     <UCard :ui="{ body: { padding: '' } }">
-      <UTable :rows="filteredHouses" :columns="columns" :loading="loading">
+      <UTable :rows="houses" :columns="columns" :loading="loading">
         <template #status-data="{ row }">
           <UBadge :label="statusLabel[row.status]" :color="statusColor[row.status]" variant="subtle" />
         </template>
@@ -31,6 +31,13 @@
         </template>
       </UTable>
     </UCard>
+    <div class="flex justify-end mt-4">
+      <UPagination
+        v-model="page"
+        :page-count="pageSize"
+        :total="totalItems"
+      />
+    </div>
 
     <!-- Modal -->
     <UModal v-model="isOpen">
@@ -87,11 +94,16 @@ import type { House } from '~/types'
 
 definePageMeta({ middleware: 'auth', layout: 'admin' })
 
-const { houses, loading, fetchHouses, createHouse, updateHouse, deleteHouse } = useHouses()
+const { houses, loading, fetchHouses, createHouse, updateHouse, deleteHouse , totalItems,totalPages } = useHouses()
 const toast = useToast()
-
+const page = ref(1)
+const pageSize = ref(10)
 const search = ref('')
-const filterStatus = ref<number | 'all'>('all')
+const filterStatus = ref<number | undefined>()
+// const filterStatus = ref<number | 'all'>('all')
+const searchDebounce = ref('')
+let timer: ReturnType<typeof setTimeout>
+
 const isOpen = ref(false)
 const deleteConfirm = ref(false)
 const saving = ref(false)
@@ -100,7 +112,7 @@ const deleteTarget = ref<House | null>(null)
 
 const form = reactive({ name: '', address: '', monthlyRent: 0, status: 0 })
 
-const filterStatusOptions  = [  { label: 'ทั้งหมด', value: 'all' },{ label: 'ว่าง', value: 0 }, { label: 'เช่าแล้ว', value: 1 },{ label: 'ซ่อมบำรุง', value: 2 }]
+const filterStatusOptions  = [  { label: 'ทั้งหมด', value: undefined },{ label: 'ว่าง', value: 0 }, { label: 'เช่าแล้ว', value: 1 },{ label: 'ซ่อมบำรุง', value: 2 }]
 const statusOptions = [{ label: 'ว่าง', value: 0 },{ label: 'เช่าแล้ว', value: 1 },{ label: 'ซ่อมบำรุง', value: 2 }
 ]
 const statusLabel: Record<string, string> = { 0: 'ว่าง', 1: 'เช่าแล้ว', 2: 'ซ่อมบำรุง' }
@@ -119,21 +131,21 @@ const columns = [
 //   const matchStatus = filterStatus.value === 'ทั้งหมด' || h.status === filterStatus.value
 //   return matchSearch && matchStatus
 // }))
-const filteredHouses = computed(() => {
-  return houses.value.filter(h => {
-    const matchSearch =
-      !search.value ||
-      h.name.includes(search.value) ||
-      h.address.includes(search.value)
+// const filteredHouses = computed(() => {
+//   return houses.value.filter(h => {
+//     const matchSearch =
+//       !search.value ||
+//       h.name.includes(search.value) ||
+//       h.address.includes(search.value)
 
-    const matchStatus =
-      filterStatus.value === 'all'
-        ? true
-        : h.status === Number(filterStatus.value)
+//     const matchStatus =
+//       filterStatus.value === 'all'
+//         ? true
+//         : h.status === Number(filterStatus.value)
 
-    return matchSearch && matchStatus
-  })
-})
+//     return matchSearch && matchStatus
+//   })
+// })
 
 const openModal = (house?: House) => {
   editTarget.value = house || null
@@ -181,8 +193,43 @@ const onDelete = async () => {
     saving.value = false
   }
 }
+watch(search, () => {
+  clearTimeout(timer)
 
-onMounted(async () => {
-  await fetchHouses()
+  timer = setTimeout(() => {
+    searchDebounce.value = search.value
+  }, 500)
+})
+
+watch(
+  [searchDebounce, filterStatus],
+  () => {
+    page.value = 1
+
+    fetchHouses(
+      page.value,
+      pageSize.value,
+      searchDebounce.value,
+      filterStatus.value
+    )
+  }
+)
+
+watch(page, () => {
+  fetchHouses(
+    page.value,
+    pageSize.value,
+    searchDebounce.value,
+    filterStatus.value
+  )
+})
+
+onMounted(() => {
+  fetchHouses(
+    page.value,
+    pageSize.value,
+    '',
+    undefined
+  )
 })
 </script>

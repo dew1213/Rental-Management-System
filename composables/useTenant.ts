@@ -5,11 +5,32 @@ export const useTenants = () => {
 
   const tenants = ref<Tenant[]>([])
   const loading = ref(false)
+  const totalItems = ref(0)
+  const totalPages = ref(0)
+  const fetchTenants = async (
+    page = 1,
+    pageSize = 10,
+    search = '',
+    status?: number
+  ) => {
 
-  const fetchTenants = async () => {
     loading.value = true
+
     try {
-      tenants.value = await $api<Tenant[]>('/tenants')
+
+      const result = await $api<any>('/tenants', {
+        query: {
+          page,
+          pageSize,
+          search,
+          status
+        }
+      })
+
+      tenants.value = result.items
+      totalItems.value = result.totalItems
+      totalPages.value = result.totalPages
+
     } finally {
       loading.value = false
     }
@@ -76,6 +97,8 @@ export const useTenants = () => {
     createTenant,
     updateTenant,
     deleteTenant,
-    fetchAvailableTenants
+    fetchAvailableTenants,
+    totalItems,
+    totalPages
   }
 }

@@ -5,12 +5,29 @@ export const useContracts = () => {
 
   const contracts = ref<Contract[]>([])
   const loading = ref(false)
-
-  const fetchContracts = async () => {
+  const totalItems = ref(0)
+  const totalPages = ref(0)
+  const fetchContracts = async (
+    page = 1,
+    pageSize = 10,
+    search = '',
+    status?: number
+  ) => {
     loading.value = true
 
     try {
-      contracts.value = await $api<Contract[]>('/contracts')
+      const result = await $api<any>('/contracts',
+        {
+        query: {
+          page,
+          pageSize,
+          search,
+          status
+        }
+      })
+      contracts.value = result.items
+      totalItems.value = result.totalItems
+      totalPages.value = result.totalPages
     } finally {
       loading.value = false
     }
@@ -65,6 +82,8 @@ export const useContracts = () => {
     fetchContracts,
     createContract,
     updateContract,
-    deleteContract
+    deleteContract,
+    totalItems,
+    totalPages
   }
 }
